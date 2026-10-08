@@ -719,12 +719,6 @@ h3 { margin: 0 0 8px; font-size: 1.2rem; letter-spacing: -0.02em; }
 }
 
 @media (max-width: 899px) {
-  .truck-waiting {
-    max-width: 11rem;
-    justify-self: start;
-    text-align: left;
-  }
-
   .truck-sources {
     top: auto;
     bottom: calc(100% + 8px);

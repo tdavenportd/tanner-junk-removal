@@ -39,6 +39,82 @@
     });
   }
 
+  // A short ease, faster than the browser's default smooth scroll.
+  // The root scroll-behavior is forced to auto for the animation so each
+  // frame moves instantly; otherwise every scrollTo restarts a smooth scroll.
+  var quickScrollId = 0;
+  var quickScrollRestore = null;
+  function scrollQuickly(top) {
+    var destination = Math.max(0, Math.round(top));
+    var root = document.documentElement;
+    quickScrollId += 1;
+    var id = quickScrollId;
+    if (quickScrollRestore === null) quickScrollRestore = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    function restore() {
+      if (id !== quickScrollId) return;
+      root.style.scrollBehavior = quickScrollRestore;
+      quickScrollRestore = null;
+    }
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var start = window.pageYOffset;
+    var change = destination - start;
+    if (reduce || Math.abs(change) < 2) {
+      window.scrollTo(0, destination);
+      restore();
+      return;
+    }
+    var duration = Math.min(560, Math.max(280, Math.abs(change) * 0.22));
+    var startTime = 0;
+    function step(now) {
+      if (id !== quickScrollId) return;
+      if (!startTime) startTime = now;
+      var t = Math.min(1, (now - startTime) / duration);
+      var eased = 1 - Math.pow(1 - t, 3);
+      window.scrollTo(0, start + change * eased);
+      if (t < 1) window.requestAnimationFrame(step);
+      else restore();
+    }
+    window.requestAnimationFrame(step);
+  }
+
+  // "Get your Price Here" and the headline "NOW" link should land on the
+  // pricing boxes, not only the heading. Nav and footer Pricing links stay
+  // on the section itself.
+  document.querySelectorAll("a.header-cta[href='#pricing'], .hero-actions a[href='#pricing'], h1 a[href='#pricing']").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      var section = document.querySelector("#pricing");
+      if (!section) return;
+      event.preventDefault();
+      var bar = document.querySelector(".site-header");
+      var headerHeight = bar ? bar.offsetHeight : 0;
+      var gap = 8;
+      var head = section.querySelector(".section-head") || section;
+      var tail = section.querySelector(".price-disclaimer") || section;
+      var headTop = head.getBoundingClientRect().top + window.pageYOffset;
+      var tailBottom = tail.getBoundingClientRect().bottom + window.pageYOffset;
+      var available = window.innerHeight - headerHeight - gap * 2;
+      var top = headTop - headerHeight - gap;
+      if (tailBottom - headTop > available) {
+        var grid = section.querySelector(".load-grid");
+        if (grid) {
+          var gridTop = grid.getBoundingClientRect().top + window.pageYOffset;
+          var gridBottom = grid.getBoundingClientRect().bottom + window.pageYOffset;
+          var gridHeight = gridBottom - gridTop;
+          if (gridHeight <= available) {
+            var room = available - gridHeight;
+            var above = gridTop - headTop;
+            top = gridTop - Math.min(above, room) - headerHeight - gap;
+          }
+        }
+      }
+      scrollQuickly(top);
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, "", "#pricing");
+      }
+    });
+  });
+
   document.querySelectorAll("[data-photo]").forEach(function (slot) {
     var img = slot.querySelector("img");
     if (!img) return;
@@ -728,11 +804,7 @@
         var headerHeight = header ? header.offsetHeight : 0;
         var anchor = truck || uploadBtn;
         var top = anchor.getBoundingClientRect().top + window.pageYOffset - headerHeight - 8;
-        var root = document.documentElement;
-        var previous = root.style.scrollBehavior;
-        root.style.scrollBehavior = "auto";
-        window.scrollTo(0, Math.max(0, top));
-        root.style.scrollBehavior = previous;
+        scrollQuickly(top);
         if (window.history && window.history.pushState) {
           window.history.pushState(null, "", "#truck-upload");
         }
