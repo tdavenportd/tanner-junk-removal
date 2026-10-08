@@ -78,40 +78,59 @@
     window.requestAnimationFrame(step);
   }
 
-  // "Get your Price Here" and the headline "NOW" link should land on the
-  // pricing boxes, not only the heading. Nav and footer Pricing links stay
-  // on the section itself.
+  // Land on the section content, not the empty padding above the heading.
+  // When the heading and the body both fit, keep the heading under the header.
+  // When only the body fits, keep that body on screen and as much of the heading as remains.
+  function sectionScrollTop(section) {
+    var bar = document.querySelector(".site-header");
+    var headerHeight = bar ? bar.offsetHeight : 0;
+    var gap = 8;
+    var head = section.querySelector(".section-head") || section;
+    var title = section.querySelector("h2") || head;
+    var body = section.querySelector(".service-grid, .load-grid, .truck-panel, .partner-grid") || head;
+    var tail = section.querySelector(".price-disclaimer") || body;
+    var headTop = head.getBoundingClientRect().top + window.pageYOffset;
+    var titleTop = title.getBoundingClientRect().top + window.pageYOffset;
+    var tailBottom = tail.getBoundingClientRect().bottom + window.pageYOffset;
+    var bodyTop = body.getBoundingClientRect().top + window.pageYOffset;
+    var bodyBottom = body.getBoundingClientRect().bottom + window.pageYOffset;
+    var available = window.innerHeight - headerHeight - gap * 2;
+    if (tailBottom - headTop <= available) return headTop - headerHeight - gap;
+    if (tailBottom - titleTop <= available) return titleTop - headerHeight - gap;
+    var bodyHeight = bodyBottom - bodyTop;
+    if (bodyHeight <= available) {
+      if (bodyTop - titleTop <= available - bodyHeight) return titleTop - headerHeight - gap;
+      return bodyTop - headerHeight - gap;
+    }
+    if (bodyHeight - available < 48) return bodyBottom - window.innerHeight + gap;
+    return headTop - headerHeight - gap;
+  }
+
+  function scrollToSection(section, hash) {
+    if (!section) return;
+    scrollQuickly(sectionScrollTop(section));
+    if (hash && window.history && window.history.pushState) {
+      window.history.pushState(null, "", hash);
+    }
+  }
+
+  document.querySelectorAll("#site-nav a[href='#services'], #site-nav a[href='#pricing'], #site-nav a[href='#estimate'], #site-nav a[href='#partners']").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      var hash = link.getAttribute("href");
+      var section = hash ? document.querySelector(hash) : null;
+      if (!section) return;
+      event.preventDefault();
+      scrollToSection(section, hash);
+    });
+  });
+
+  // "Get your Price Here" and the headline "NOW" link use the same landing as Pricing.
   document.querySelectorAll("a.header-cta[href='#pricing'], .hero-actions a[href='#pricing'], h1 a[href='#pricing']").forEach(function (link) {
     link.addEventListener("click", function (event) {
       var section = document.querySelector("#pricing");
       if (!section) return;
       event.preventDefault();
-      var bar = document.querySelector(".site-header");
-      var headerHeight = bar ? bar.offsetHeight : 0;
-      var gap = 8;
-      var head = section.querySelector(".section-head") || section;
-      var tail = section.querySelector(".price-disclaimer") || section;
-      var headTop = head.getBoundingClientRect().top + window.pageYOffset;
-      var tailBottom = tail.getBoundingClientRect().bottom + window.pageYOffset;
-      var available = window.innerHeight - headerHeight - gap * 2;
-      var top = headTop - headerHeight - gap;
-      if (tailBottom - headTop > available) {
-        var grid = section.querySelector(".load-grid");
-        if (grid) {
-          var gridTop = grid.getBoundingClientRect().top + window.pageYOffset;
-          var gridBottom = grid.getBoundingClientRect().bottom + window.pageYOffset;
-          var gridHeight = gridBottom - gridTop;
-          if (gridHeight <= available) {
-            var room = available - gridHeight;
-            var above = gridTop - headTop;
-            top = gridTop - Math.min(above, room) - headerHeight - gap;
-          }
-        }
-      }
-      scrollQuickly(top);
-      if (window.history && window.history.pushState) {
-        window.history.pushState(null, "", "#pricing");
-      }
+      scrollToSection(section, "#pricing");
     });
   });
 
